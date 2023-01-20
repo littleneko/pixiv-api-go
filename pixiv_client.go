@@ -14,7 +14,7 @@ import (
 const (
 	userBookmarksUrl = "https://www.pixiv.net/ajax/user/%s/illusts/bookmarks"
 	userFollowingUrl = "https://www.pixiv.net/ajax/user/%s/following"
-	illustInfoUrl    = "https://www.pixiv.net/ajax/illust/%s?lang=zh"
+	illustInfoUrl    = "https://www.pixiv.net/ajax/illust/%s"
 	illustPagesUrl   = "https://www.pixiv.net/ajax/illust/%s/pages"
 	userIllustUrl    = "https://www.pixiv.net/ajax/user/%s/profile/all"
 	userInfoUrl      = "https://www.pixiv.net/ajax/user/%s"
@@ -38,12 +38,6 @@ const (
 )
 
 func genPageUrl(uid string, offset, limit int32, urlType pageUrlType) (string, error) {
-	params := url.Values{}
-	params.Set("tag", "")
-	params.Set("offset", strconv.FormatInt(int64(offset), 10))
-	params.Set("limit", strconv.FormatInt(int64(limit), 10))
-	params.Set("rest", "show")
-
 	var pUrl *url.URL
 	switch urlType {
 	case pageUrlTypeBookmarks:
@@ -55,6 +49,13 @@ func genPageUrl(uid string, offset, limit int32, urlType pageUrlType) (string, e
 	default:
 		return "", errors.New("unknown page type")
 	}
+
+	params := pUrl.Query()
+	params.Set("tag", "")
+	params.Set("offset", strconv.FormatInt(int64(offset), 10))
+	params.Set("limit", strconv.FormatInt(int64(limit), 10))
+	params.Set("rest", "show")
+
 	pUrl.RawQuery = params.Encode()
 	return pUrl.String(), nil
 }
@@ -84,6 +85,7 @@ func NewPixivClientWithProxy(proxy *url.URL, timeoutMs int32) *PixivClient {
 		},
 		header: make(map[string]string),
 		cookie: make(map[string]string),
+		lang:   "zh",
 	}
 	return pc
 }
@@ -110,6 +112,10 @@ func (p *PixivClient) AddCookie(key, value string) {
 
 func (p *PixivClient) SetCookiePHPSESSID(value string) {
 	p.cookie["PHPSESSID"] = value
+}
+
+func (p *PixivClient) SetLang(lang string) {
+	p.lang = lang
 }
 
 func (p *PixivClient) Login(user, password string) {
@@ -155,8 +161,16 @@ func (p *PixivClient) getRawDate(url, refer string) ([]byte, error) {
 	return body, nil
 }
 
-func (p *PixivClient) getPixivResp(url, refer string) (*PixivResponse, error) {
-	body, err := p.getRawDate(url, refer)
+func (p *PixivClient) getPixivResp(urlStr, refer string) (*PixivResponse, error) {
+	pUrl, err := url.Parse(urlStr)
+	if err != nil {
+		return nil, err
+	}
+	params := pUrl.Query()
+	params.Add("lang", p.lang)
+	pUrl.RawQuery = params.Encode()
+
+	body, err := p.getRawDate(pUrl.String(), refer)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +388,8 @@ func (p *PixivClient) IllustSearch() {
 
 // IllustRank get the illust rank, date	format: 20230118
 func (p *PixivClient) IllustRank(mode IllustRankMode, content IllustRankContent, date string, page int) (*IllustRankInfo, error) {
-	params := url.Values{}
+	irUrl, _ := url.Parse(illustRankUrl)
+	params := irUrl.Query()
 	params.Set("mode", string(mode))
 	params.Set("content", string(content))
 	if len(date) > 0 {
@@ -383,9 +398,11 @@ func (p *PixivClient) IllustRank(mode IllustRankMode, content IllustRankContent,
 	if page > 0 {
 		params.Set("p", strconv.FormatInt(int64(page), 10))
 	}
-	params.Set("format", "json")
+	if len(p.lang) > 0 {
+		params.Set("lang", p.lang)
+	}
 
-	irUrl, _ := url.Parse(illustRankUrl)
+	params.Set("format", "json")
 	irUrl.RawQuery = params.Encode()
 	urlStr := irUrl.String()
 
