@@ -51,9 +51,10 @@ func WriteFileAndCalHash(reader io.Reader, filename string, hashType HashType) (
 		h = sha256.New()
 		break
 	case Sha1:
-	default:
 		h = sha1.New()
 		break
+	default:
+		h = sha1.New()
 	}
 	r := io.TeeReader(reader, h)
 
@@ -69,4 +70,22 @@ func WriteFile(reader io.Reader, filename string) (int64, error) {
 
 func WriteFIleCalSha1(reader io.Reader, filename string) (int64, string, error) {
 	return WriteFileAndCalHash(reader, filename, Sha1)
+}
+
+func FileSha1Sum(filename string) (string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	h := sha1.New()
+	if _, err := io.Copy(h, file); err != nil {
+		return "", nil
+	}
+
+	sum := fmt.Sprintf("%x", h.Sum(nil))
+	return sum, nil
 }

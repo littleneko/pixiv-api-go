@@ -114,3 +114,20 @@ func TestIllustInfo(t *testing.T) {
 		}
 	}
 }
+
+func TestDownload(t *testing.T) {
+	client := NewPixivClient(60000)
+	filename := "/tmp/pixiv-api/1.jpg"
+	_, hash, err := client.DownloadIllust("https://i.pximg.net/img-original/img/2022/12/24/00/00/46/103842593_p0.jpg", filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actualHash, err := FileSha1Sum(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hash != actualHash {
+		t.Errorf("expected: %s, acture: %s", hash, actualHash)
+	}
+}
