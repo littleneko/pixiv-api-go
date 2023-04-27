@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// var cookie = ""
+// var Cookie = ""
 var userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
 
 func TestPixivID(t *testing.T) {
@@ -21,29 +21,51 @@ func TestPixivID(t *testing.T) {
 }
 
 func TestUserBookmarks(t *testing.T) {
+	//client := NewPixivClient(5000)
+	//client.SetUserAgent(userAgent)
+	//client.SetCookiePHPSESSID("")
+	//
+	//var testCase = []struct {
+	//	uid string
+	//}{
+	//	{"4495110"},
+	//}
+	//
+	//for _, tc := range testCase {
+	//	bookmarks, err := client.GetUserBookmarks(tc.uid, 0, 48)
+	//	if err != nil {
+	//		t.Fatal(err)
+	//	}
+	//	j, _ := json.MarshalIndent(bookmarks, "", "  ")
+	//	t.Log(string(j))
+	//}
+}
+
+func TestGetIllustInfo(t *testing.T) {
 	client := NewPixivClient(5000)
 	client.SetUserAgent(userAgent)
-	//client.SetCookiePHPSESSID("")
 
 	var testCase = []struct {
-		uid string
+		pid          PixivID
+		expectedPage int
 	}{
-		{"4495110"},
+		{"107157430", 5},
 	}
 
 	for _, tc := range testCase {
-		bookmarks, err := client.GetUserBookmarks(tc.uid, 0, 48)
+		illusts, err := client.GetIllustInfo(tc.pid, false)
 		if err != nil {
 			t.Fatal(err)
 		}
-		j, _ := json.MarshalIndent(bookmarks, "", "  ")
-		t.Log(string(j))
+		if tc.expectedPage != len(illusts) {
+			t.Errorf("illust expected page: %d, acture: %d", tc.expectedPage, len(illusts))
+		}
 	}
 }
 
 func TestIllustRank(t *testing.T) {
 	client := NewPixivClient(5000)
-	//client.SetCookiePHPSESSID(cookie)
+	//client.SetCookiePHPSESSID(Cookie)
 	//client.SetUserAgent(userAgent)
 
 	var testCase = []struct {
@@ -84,7 +106,7 @@ func TestIllustRank(t *testing.T) {
 
 func TestIllustInfo(t *testing.T) {
 	client := NewPixivClient(5000)
-	//client.SetCookiePHPSESSID(cookie)
+	//client.SetCookiePHPSESSID(Cookie)
 	//client.SetUserAgent(userAgent)
 
 	var testCase = []struct {

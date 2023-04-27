@@ -62,9 +62,10 @@ func genPageUrl(uid string, offset, limit int32, urlType pageUrlType) (string, e
 
 type PixivClient struct {
 	client *http.Client
-	header map[string]string
-	cookie map[string]string
-	lang   string
+
+	Header map[string]string
+	Cookie map[string]string
+	Lang   string
 }
 
 func NewPixivClient(timeoutMs int32) *PixivClient {
@@ -83,19 +84,19 @@ func NewPixivClientWithProxy(proxy *url.URL, timeoutMs int32) *PixivClient {
 			Timeout:   time.Duration(timeoutMs) * time.Millisecond,
 			Transport: tr,
 		},
-		header: make(map[string]string),
-		cookie: make(map[string]string),
-		lang:   "zh",
+		Header: make(map[string]string),
+		Cookie: make(map[string]string),
+		Lang:   "zh",
 	}
 	return pc
 }
 
 func (p *PixivClient) SetHeader(header map[string]string) {
-	p.header = header
+	p.Header = header
 }
 
 func (p *PixivClient) AddHeader(key, value string) {
-	p.header[key] = value
+	p.Header[key] = value
 }
 
 func (p *PixivClient) SetUserAgent(value string) {
@@ -103,32 +104,32 @@ func (p *PixivClient) SetUserAgent(value string) {
 }
 
 func (p *PixivClient) SetCookie(cookie map[string]string) {
-	p.cookie = cookie
+	p.Cookie = cookie
 }
 
 func (p *PixivClient) AddCookie(key, value string) {
-	p.cookie[key] = value
+	p.Cookie[key] = value
 }
 
 func (p *PixivClient) SetCookiePHPSESSID(value string) {
-	p.cookie["PHPSESSID"] = value
+	p.Cookie["PHPSESSID"] = value
 }
 
 func (p *PixivClient) SetLang(lang string) {
-	p.lang = lang
+	p.Lang = lang
 }
 
-func (p *PixivClient) Login(user, password string) {
-	panic("not supported")
+func (p *PixivClient) Login(user, password string) error {
+	return errors.New("not supported")
 }
 
 func (p *PixivClient) getRaw(url, refer string) (*http.Response, error) {
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("Referer", refer)
-	for k, v := range p.header {
+	for k, v := range p.Header {
 		req.Header.Add(k, v)
 	}
-	for k, v := range p.cookie {
+	for k, v := range p.Cookie {
 		req.AddCookie(&http.Cookie{Name: k, Value: v})
 	}
 
@@ -167,7 +168,7 @@ func (p *PixivClient) getPixivResp(urlStr, refer string) (*PixivResponse, error)
 		return nil, err
 	}
 	params := pUrl.Query()
-	params.Add("lang", p.lang)
+	params.Add("lang", p.Lang)
 	pUrl.RawQuery = params.Encode()
 
 	body, err := p.getRawDate(pUrl.String(), refer)
@@ -187,7 +188,7 @@ func (p *PixivClient) getPixivResp(urlStr, refer string) (*PixivResponse, error)
 	return &pResp, nil
 }
 
-// GetUserBookmarks get the bookmarks of a user
+// GetUserBookmarks get the bookmarks info of a user
 func (p *PixivClient) GetUserBookmarks(uid string, offset, limit int32) (*BookmarksInfo, error) {
 	bUrl, err := genPageUrl(uid, offset, limit, pageUrlTypeBookmarks)
 	if err != nil {
@@ -207,7 +208,7 @@ func (p *PixivClient) GetUserBookmarks(uid string, offset, limit int32) (*Bookma
 	return &bookmarks, nil
 }
 
-// GetUserFollowing get the following of a user
+// GetUserFollowing get the following info of a user
 func (p *PixivClient) GetUserFollowing(uid string, offset, limit int32) (*FollowingInfo, error) {
 	fUrl, err := genPageUrl(uid, offset, limit, pageUrlTypeFollowing)
 	if err != nil {
@@ -260,7 +261,7 @@ func (p *PixivClient) GetUserIllusts(uid string) ([]PixivID, error) {
 }
 
 // GetIllustInfo get the illust detail for the illust id. For a multi page illust,
-// only the first page will be get if onlyP0 is true.
+// only the first page will be fetched if onlyP0 is true.
 func (p *PixivClient) GetIllustInfo(illustId PixivID, onlyP0 bool) ([]*IllustInfo, error) {
 	illust, err := p.getBasicIllustInfo(illustId)
 	if err != nil {
@@ -337,9 +338,12 @@ func (p *PixivClient) getBasicIllustInfo(illustId PixivID) (*IllustInfo, error) 
 		}
 		illust.Tags = append(illust.Tags, tag.Tag)
 		if len(tag.Translation) > 0 {
-			for _, k := range tag.Translation {
-				illust.TransTags = append(illust.TransTags, k)
+			for _, v := range tag.Translation {
+				illust.TransTags = append(illust.TransTags, v)
+				break
 			}
+		} else {
+			illust.TransTags = append(illust.TransTags, "")
 		}
 	}
 	illust.R18 = r18 || illust.XRestrict >= XRestrictLevelR18
@@ -378,12 +382,12 @@ func (p *PixivClient) getMultiPagesIllustInfo(seed *IllustInfo) ([]*IllustInfo, 
 	return illusts, nil
 }
 
-func (p *PixivClient) GetUserInfo(uid string, full bool) {
-	panic("not supported")
+func (p *PixivClient) GetUserInfo(uid string, full bool) (*UserInfo, error) {
+	return nil, errors.New("not supported")
 }
 
-func (p *PixivClient) IllustSearch() {
-	panic("not supported")
+func (p *PixivClient) IllustSearch() ([]*IllustInfo, error) {
+	return nil, errors.New("not supported")
 }
 
 // IllustRank get the illust rank, date	format: 20230118
@@ -398,8 +402,8 @@ func (p *PixivClient) IllustRank(mode IllustRankMode, content IllustRankContent,
 	if page > 0 {
 		params.Set("p", strconv.FormatInt(int64(page), 10))
 	}
-	if len(p.lang) > 0 {
-		params.Set("lang", p.lang)
+	if len(p.Lang) > 0 {
+		params.Set("lang", p.Lang)
 	}
 
 	params.Set("format", "json")
