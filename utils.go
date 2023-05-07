@@ -59,6 +59,9 @@ func WriteFileAndCalHash(reader io.Reader, filename string, hashType HashType) (
 	r := io.TeeReader(reader, h)
 
 	size, err := io.Copy(file, r)
+	if err != nil {
+		return 0, "", err
+	}
 	sum := fmt.Sprintf("%x", h.Sum(nil))
 	return size, sum, nil
 }
